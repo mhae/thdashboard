@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Temperature and Humidity Dashboard</title>
+    <style>
+        body {
+            font: 14px Arial, sans-serif;
+            margin: 0px;
+        }
+
+        .header {
+            padding: 1px 5px;
+            background-color: rgb(16, 13, 41);
+            color: rgb(238, 241, 250);
+        }
+
+        .header h1 {
+            font-size: 24px;
+        }
+
+        .container {
+            width: 100%;
+        }
+
+        .wrapper {
+            height: 100%;
+        }
+
+        .current,
+        .last24h,
+        .last7d {
+            float: left;
+            padding: 1px;
+            min-height: 250px;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .current {
+            padding: 1px 5px;
+            border:1px solid white;
+            width: 20%;
+            color: rgb(238, 241, 250);
+            background-color: rgb(16, 13, 41);
+        }
+
+        .last24h {
+            float: left;
+            width: 80%;
+        }
+
+        .last7d {
+            width: 100%;
+        }
+
+        .clearfix:after {
+            content: ".";
+            display: block;
+            height: 0;
+            clear: both;
+            visibility: hidden;
+        }
+
+        .footer {
+            background: #acb3b9;
+            text-align: center;
+            padding: 5px;
+        }
+    </style>
+    <script src="static/echarts.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Temperature and Humidity Dashboard</h1>
+        </div>
+        <div class="wrapper clearfix">
+            <div class="current">
+                <b>Current Conditions</b><br>
+                <table>
+                    <tr>
+                        <td>Time: </td>
+                        <td>{{ .GetLastTimestamp }}</td>
+                    </tr>
+                    <tr>
+                        <td>Temperature: </td>
+                        <td>{{ .LastTemperature }}&#x00B0 </td>
+                    </tr>
+                    <tr>
+                        <td>Humidity (Int): </td>
+                        <td>{{ .LastHumidity }}%</td>
+                    </tr>
+                    <tr></tr>
+                    <tr>
+                        <td>
+                            <nobr>Humidity (Ext): </nobr>
+                        </td>
+                        <td>{{ .CurrentHumidity }}</td>
+                    </tr>
+                </table>
+            </div>
+            <div id="last24h" class="last24h">
+                <h2>Last 24h</h2>
+            </div>
+        </div>
+        <div id="last7d" class="last7d">
+            <h2>Last 7d</h2>
+        </div>
+        <div class="footer">
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        var myChart1 = echarts.init(document.getElementById('last24h'), 'dark');
+
+        var option = {
+            title: {
+                text: 'Last 24h'
+            },
+            legend: {},
+            dataZoom: [{}],
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'cross'
+                },
+            },
+            xAxis: {
+                name: "Timestamp",
+                axisLabel: {
+                    formatter: function (value, index) {
+                        return value.replace(" ", "\n")
+                    },
+                },
+                data: [{{ .GetLastDayTimestamp }}]
+            },
+            yAxis: {},
+            series: [
+                {
+                    name: 'Temperature',
+                    type: 'line',
+                    markPoint: {
+                        data: [
+                            { type: 'max', name: 'Max' },
+                            { type: 'min', name: 'Min' }
+                        ]
+                    },
+                    markLine: {
+                        data: [
+                            { type: 'average', name: 'Avg' }
+                        ]
+                    },
+                    data: [{{ .GetLastDayTemperature }}]
+                },
+                {
+                    name: 'Humidity',
+                    type: 'line',
+                    markPoint: {
+                        data: [
+                            { type: 'max', name: 'Max' },
+                            { type: 'min', name: 'Min' }
+                        ]
+                    },
+                    markLine: {
+                        data: [
+                            { type: 'average', name: 'Avg' }
+                        ]
+                    },
+                    data: [{{ .GetLastDayHumidity }}]
+                }]
+        };
+        myChart1.setOption(option);
+
+        var myChart2 = echarts.init(document.getElementById('last7d'), 'dark');
+        var option = {
+            title: {
+                text: 'Last 24h'
+            },
+            legend: {},
+            dataZoom: [{}],
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'cross'
+                },
+            },
+            xAxis: {
+                name: "Timestamp",
+                axisLabel: {
+                    formatter: function (value, index) {
+                        return value.replace(" ", "\n")
+                    },
+                },
+                data: [{{ .GetLastNTimestamp }}]
+            },
+            yAxis: {},
+            series: [
+                {
+                    name: 'Temperature',
+                    type: 'line',
+                    markPoint: {
+                        data: [
+                            { type: 'max', name: 'Max' },
+                            { type: 'min', name: 'Min' }
+                        ]
+                    },
+                    markLine: {
+                        data: [
+                            { type: 'average', name: 'Avg' }
+                        ]
+                    },
+                    data: [{{ .GetLastNTemperature }}]
+                },
+                {
+                    name: 'Humidity',
+                    type: 'line',
+                    markPoint: {
+                        data: [
+                            { type: 'max', name: 'Max' },
+                            { type: 'min', name: 'Min' }
+                        ]
+                    },
+                    markLine: {
+                        data: [
+                            { type: 'average', name: 'Avg' }
+                        ]
+                    },
+                    data: [{{ .GetLastNHumidity }}]
+                }]
+        };
+
+        myChart2.setOption(option);
+        window.onresize = function () {
+            myChart1.resize();
+            myChart2.resize();
+        };
+    </script>
+</body>
+
+</html>
