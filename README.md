@@ -16,5 +16,9 @@ Example:
 2021-08-29 15:29:36, 71.6, 50.8
 ```
 
-## Running
+## Running (development)
 go run main.go -file=/tmp/crawlspace.csv
+
+## Cross compiling for Raspberry Pi
+env GOOS=linux GOARCH=arm GOARM=5 go build
+
