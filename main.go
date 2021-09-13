@@ -185,6 +185,8 @@ func getCurrentHumidity() string {
 func handler(w http.ResponseWriter, r *http.Request) {
 	f, err := os.Open(*csvFilename)
 	check(err)
+	defer f.Close()
+
 	fi, err := f.Stat()
 
 	scanner := util.NewScanner(f, int(fi.Size()))
