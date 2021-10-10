@@ -10,7 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,6 +24,7 @@ var content embed.FS
 var dash_html string
 
 var csvFilename = flag.String("file", "", "Path to csv file with timestamp, temperature and humidity")
+var fetchCurrentHumidity = flag.Bool("ch", true, "Fetch current humidity")
 
 func check(e error) {
 	if e != nil {
@@ -31,32 +32,33 @@ func check(e error) {
 	}
 }
 
-func ReverseSlice(s interface{}) {
-	size := reflect.ValueOf(s).Len()
-	swap := reflect.Swapper(s)
-	for i, j := 0, size-1; i < j; i, j = i+1, j-1 {
-		swap(i, j)
-	}
-}
-
 type Stats struct {
-	CurrentHumidity    string
-	LastHumidity       string
-	LastTemperature    string
-	LastTimestamp      string
-	LastNTimestamp     []string
-	LastNTemperature   []string
-	LastNHumidity      []string
-	LastDayTimestamp   []string
-	LastDayTemperature []string
-	LastDayHumidity    []string
+	LastN                  uint
+	CurrentHumidity        string
+	LastHumidity           string
+	LastTemperature        string
+	LastTimestamp          string
+	FirstTimestamp         string
+	LastNTimestamp         []string
+	LastNTemperature       []string
+	LastNHumidity          []string
+	LastDayTimestamp       []string
+	LastDayTemperature     []string
+	LastDayHumidity        []string
+	LastNTemperatureTrend  util.Trendline
+	LastNHumidityTrend     util.Trendline
+	dailyTemperatureMinMax []util.MinMax
+	dailyHumidityMinMax    []util.MinMax
 }
 
 func NewStats() *Stats {
 	stats := &Stats{}
+	stats.LastN = 7
 	stats.LastNTimestamp = make([]string, 0)
 	stats.LastNTemperature = make([]string, 0)
 	stats.LastNHumidity = make([]string, 0)
+	stats.dailyTemperatureMinMax = make([]util.MinMax, 0)
+	stats.dailyHumidityMinMax = make([]util.MinMax, 0)
 	return stats
 }
 
@@ -99,17 +101,100 @@ func (stats *Stats) GetLastTimestamp() string {
 	return strings.Replace(stats.LastTimestamp, " ", "\n", 0)
 }
 
+func (stats *Stats) GenerateNulls() template.JS {
+	var sb strings.Builder
+	for i := 0; i < len(stats.LastNTimestamp)-2; i++ {
+		if i != 0 {
+			sb.WriteString(",")
+		}
+		sb.WriteString("null")
+
+	}
+	return template.JS(sb.String())
+}
+
+func (stats *Stats) getDailyMinMaxs(mimmax []util.MinMax, min bool) template.JS {
+	var sb strings.Builder
+	p := 0
+	for _, ts := range stats.LastNTimestamp {
+		if p == len(mimmax) {
+			sb.WriteString("null,")
+			continue
+		}
+		if min {
+			if ts == mimmax[p].MinTs {
+				sb.WriteString(fmt.Sprintf("%.2f,", mimmax[p].Min))
+				p++
+			} else {
+				sb.WriteString("null,")
+			}
+		} else {
+			if ts == mimmax[p].MaxTs {
+				sb.WriteString(fmt.Sprintf("%.2f,", mimmax[p].Max))
+				p++
+			} else {
+				sb.WriteString("null,")
+			}
+		}
+	}
+
+	s := sb.String()
+	return template.JS(s[:len(s)-1])
+}
+
+func (stats *Stats) GetDailyTemperatureMins() template.JS {
+	return stats.getDailyMinMaxs(stats.dailyTemperatureMinMax, true)
+}
+
+func (stats *Stats) GetDailyTemperatureMaxs() template.JS {
+	return stats.getDailyMinMaxs(stats.dailyTemperatureMinMax, false)
+}
+
+func (stats *Stats) GetDailyHumidityMins() template.JS {
+	return stats.getDailyMinMaxs(stats.dailyHumidityMinMax, true)
+}
+
+func (stats *Stats) GetDailyHumidityMaxs() template.JS {
+	return stats.getDailyMinMaxs(stats.dailyHumidityMinMax, false)
+}
+
+func (stats *Stats) getDailyMinMaxScatter(mms []util.MinMax,
+	filter func(mm util.MinMax) (ts string, v float32)) template.JS {
+	var sb strings.Builder
+	for _, mm := range mms {
+		var ts, v = filter(mm)
+		sb.WriteString(fmt.Sprintf("['%s',%.2f],", ts, v))
+	}
+
+	s := sb.String()
+	return template.JS(s[:len(s)-1])
+}
+
+func (stats *Stats) GetDailyTemperatureMinsScatter() template.JS {
+	return stats.getDailyMinMaxScatter(stats.dailyTemperatureMinMax, util.Min)
+}
+
+func (stats *Stats) GetDailyTemperatureMaxsScatter() template.JS {
+	return stats.getDailyMinMaxScatter(stats.dailyTemperatureMinMax, util.Max)
+}
+
+func (stats *Stats) GetDailyHumidityMinsScatter() template.JS {
+	return stats.getDailyMinMaxScatter(stats.dailyHumidityMinMax, util.Min)
+}
+
+func (stats *Stats) GetDailyHumidityMaxsScatter() template.JS {
+	return stats.getDailyMinMaxScatter(stats.dailyHumidityMinMax, util.Max)
+}
+
 func (s *Stats) process(scanner *util.Scanner) {
-	lastN := 7
 	var lastDayStart time.Time
 	currentDay := 0
+	lastN := s.LastN
 
 	for {
 		line, _, err := scanner.Line()
-		if err != nil {
-			fmt.Println("Error:", err)
-			break
-		}
+		check(err)
+
 		if line == "" {
 			continue
 		}
@@ -118,32 +203,52 @@ func (s *Stats) process(scanner *util.Scanner) {
 		data[1] = strings.TrimSpace(data[1])
 		data[2] = strings.TrimSpace(data[2])
 		date, err := time.Parse("2006-01-02 15:04:05", data[0])
-		if err != nil {
-			fmt.Println("Error:", err)
-			break
-		}
+		check(err)
 
 		if s.LastTimestamp == "" {
 			s.LastTimestamp = data[0]
 			s.LastTemperature = data[1]
 			s.LastHumidity = data[2]
 			currentDay = date.Day()
-
 			lastDayStart = date.Add(-time.Hour * 24)
+			s.dailyTemperatureMinMax = append(s.dailyTemperatureMinMax, *util.NewMinMax())
+			s.dailyHumidityMinMax = append(s.dailyHumidityMinMax, *util.NewMinMax())
 		}
+
+		s.FirstTimestamp = data[0]
 
 		if currentDay != date.Day() {
 			lastN--
 			if lastN == 0 {
-				break
+				break // Done
 			}
+			// fmt.Println(lastN, currentDay, s.DailyTemperatureMinMax[len(s.DailyTemperatureMinMax)-1], s.DailyHumidityMinMax[len(s.DailyHumidityMinMax)-1])
+			s.dailyTemperatureMinMax = append(s.dailyTemperatureMinMax, *util.NewMinMax())
+			s.dailyHumidityMinMax = append(s.dailyHumidityMinMax, *util.NewMinMax())
+
 			currentDay = date.Day()
 		}
 
+		// Process lastN
 		s.LastNTimestamp = append(s.LastNTimestamp, data[0])
 		s.LastNTemperature = append(s.LastNTemperature, data[1])
 		s.LastNHumidity = append(s.LastNHumidity, data[2])
 
+		// Process trendline
+		temp, err := strconv.ParseFloat(data[1], 32)
+		if err == nil {
+			s.LastNTemperatureTrend.Add(float64(date.Second()), temp)
+		}
+		hum, err := strconv.ParseFloat(data[2], 32)
+		if err == nil {
+			s.LastNHumidityTrend.Add(float64(date.Second()), hum)
+		}
+
+		// Process daily min/max
+		s.dailyTemperatureMinMax[len(s.dailyTemperatureMinMax)-1].Update(float32(temp), data[0])
+		s.dailyHumidityMinMax[len(s.dailyHumidityMinMax)-1].Update(float32(hum), data[0])
+
+		// Process last day
 		if date.Unix() >= lastDayStart.Unix() {
 			s.LastDayTimestamp = append(s.LastDayTimestamp, data[0])
 			s.LastDayTemperature = append(s.LastDayTemperature, data[1])
@@ -151,15 +256,26 @@ func (s *Stats) process(scanner *util.Scanner) {
 		}
 	}
 
-	ReverseSlice(s.LastNTimestamp)
-	ReverseSlice(s.LastNTemperature)
-	ReverseSlice(s.LastNHumidity)
+	util.ReverseSlice(s.LastNTimestamp)
+	util.ReverseSlice(s.LastNTemperature)
+	util.ReverseSlice(s.LastNHumidity)
 
-	ReverseSlice(s.LastDayTimestamp)
-	ReverseSlice(s.LastDayTemperature)
-	ReverseSlice(s.LastDayHumidity)
+	util.ReverseSlice(s.LastDayTimestamp)
+	util.ReverseSlice(s.LastDayTemperature)
+	util.ReverseSlice(s.LastDayHumidity)
 
-	s.CurrentHumidity = getCurrentHumidity()
+	util.ReverseSlice(s.dailyTemperatureMinMax)
+	util.ReverseSlice(s.dailyHumidityMinMax)
+
+	s.LastNHumidityTrend.Calc()
+	s.LastNTemperatureTrend.Calc()
+
+	if *fetchCurrentHumidity {
+		s.CurrentHumidity = getCurrentHumidity()
+	} else {
+		s.CurrentHumidity = "N/A"
+	}
+
 }
 
 func getCurrentHumidity() string {
@@ -167,6 +283,7 @@ func getCurrentHumidity() string {
 	check(err)
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
+	check(err)
 	pos := bytes.Index(body, []byte("Windsor, CO"))
 	if pos == -1 {
 		println("Current weather info download failed - no 'Winsdor, CO' in response")
@@ -183,11 +300,17 @@ func getCurrentHumidity() string {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+
 	f, err := os.Open(*csvFilename)
 	check(err)
 	defer f.Close()
 
 	fi, err := f.Stat()
+	check(err)
 
 	scanner := util.NewScanner(f, int(fi.Size()))
 	stats := NewStats()

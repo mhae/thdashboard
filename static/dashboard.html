@@ -33,7 +33,7 @@
         .last7d {
             float: left;
             padding: 1px;
-            min-height: 250px;
+            min-height: 300px;
             height: 100%;
             box-sizing: border-box;
         }
@@ -137,7 +137,7 @@
                 },
                 data: [{{ .GetLastDayTimestamp }}]
             },
-            yAxis: {},
+            yAxis: { min: 10 },
             series: [
                 {
                     name: 'Temperature',
@@ -196,7 +196,7 @@
                 },
                 data: [{{ .GetLastNTimestamp }}]
             },
-            yAxis: {},
+            yAxis: { min: 10 },
             series: [
                 {
                     name: 'Temperature',
@@ -229,10 +229,58 @@
                         ]
                     },
                     data: [{{ .GetLastNHumidity }}]
-                }]
+                },
+                {
+                    name: 'Temperature Trend',
+                    type: 'line',
+                    lineStyle: {
+                        type: 'dotted'
+                    },
+                    markPoint: {
+                        data: [
+                            { type: 'max', name: 'Max' },
+                            { type: 'min', name: 'Min' }
+                        ]
+                    },
+                    connectNulls: true,
+                    data: [ {{ .LastNTemperatureTrend.YE }}, {{ .GenerateNulls }}, {{ .LastNTemperatureTrend.YS }} ]
+                },
+                {
+                    name: 'Humidity Trend',
+                    type: 'line',
+                    lineStyle: {
+                        type: 'dotted'
+                    },
+                    markPoint: {
+                        data: [
+                            { type: 'max', name: 'Max' },
+                            { type: 'min', name: 'Min' }
+                        ]
+                    },
+                    connectNulls: true,
+                    data: [ {{ .LastNHumidityTrend.YE }}, {{ .GenerateNulls }}, {{ .LastNHumidityTrend.YS }} ]
+                },
+                {
+                    name: 'Daily Humidity Minimums',
+                    type: 'scatter',
+                    symbol: 'triangle',
+                    symbolSize: 10,
+                    data: [ {{ .GetDailyHumidityMinsScatter }} ]
+                },
+                {
+                    name: 'Daily Humidity Maximums',
+                    type: 'scatter',
+                    symbol: 'triangle',
+                    symbolSize: 10,
+                    symbolRotate: 180,
+                    data: [ {{ .GetDailyHumidityMaxsScatter }} ]
+                },
+                ]
+                
         };
 
         myChart2.setOption(option);
+
         window.onresize = function () {
             myChart1.resize();
             myChart2.resize();
