@@ -1,5 +1,7 @@
 package main
 
+// (C) Copyright 2021 by Michael Haeuptle
+
 import (
 	"bytes"
 	"embed"
@@ -24,7 +26,8 @@ var content embed.FS
 var dash_html string
 
 var csvFilename = flag.String("file", "", "Path to csv file with timestamp, temperature and humidity")
-var fetchCurrentHumidity = flag.Bool("ch", true, "Fetch current humidity")
+var fetchCurrentHumidity = flag.Bool("ch", true, "Fetch current humidity from the Internet")
+var lastNd = flag.Uint("lastn", 7, "Last n days")
 
 func check(e error) {
 	if e != nil {
@@ -51,9 +54,9 @@ type Stats struct {
 	dailyHumidityMinMax    []util.MinMax
 }
 
-func NewStats() *Stats {
+func NewStats(lastn uint) *Stats {
 	stats := &Stats{}
-	stats.LastN = 7
+	stats.LastN = lastn
 	stats.LastNTimestamp = make([]string, 0)
 	stats.LastNTemperature = make([]string, 0)
 	stats.LastNHumidity = make([]string, 0)
@@ -278,6 +281,7 @@ func (s *Stats) process(scanner *util.Scanner) {
 
 }
 
+// Fetches current humidity from the Internet
 func getCurrentHumidity() string {
 	resp, err := http.Get("https://forecast7.com/en/40d48n104d90/windsor/")
 	check(err)
@@ -313,14 +317,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	check(err)
 
 	scanner := util.NewScanner(f, int(fi.Size()))
-	stats := NewStats()
+	stats := NewStats(*lastNd)
 	stats.process(scanner)
 
 	t := template.Must(template.New("view.html").Parse(dash_html))
 	t.Execute(w, stats)
 }
-
-// https://forecast7.com/en/40d48n104d90/windsor/
 
 func main() {
 	flag.Parse()

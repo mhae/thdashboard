@@ -30,7 +30,7 @@
 
         .current,
         .last24h,
-        .last7d {
+        .lastn {
             float: left;
             padding: 1px;
             min-height: 300px;
@@ -51,7 +51,7 @@
             width: 80%;
         }
 
-        .last7d {
+        .lastn {
             width: 100%;
         }
 
@@ -106,7 +106,7 @@
                 <h2>Last 24h</h2>
             </div>
         </div>
-        <div id="last7d" class="last7d">
+        <div id="lastn" class="lastn">
             <h2>Last 7d</h2>
         </div>
         <div class="footer">
@@ -174,10 +174,10 @@
         };
         myChart1.setOption(option);
 
-        var myChart2 = echarts.init(document.getElementById('last7d'), 'dark');
+        var myChart2 = echarts.init(document.getElementById('lastn'), 'dark');
         var option = {
             title: {
-                text: 'Last 7 days'
+                text: 'Last {{ .LastN }} days'
             },
             legend: {},
             dataZoom: [{}],
