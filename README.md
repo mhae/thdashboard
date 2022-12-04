@@ -1,7 +1,7 @@
 # thdashboard
 Temperature and Humidity Dashboard for Raspberry Pi SHT30 Sensor data written in Go.
 
-![1BBF1064-3588-4A58-97F2-2942626AEAB4](https://user-images.githubusercontent.com/6045616/132441382-21c437c9-133d-46b6-9abd-f44f7b32a159.png)
+![79755B5C-6CB6-499C-9A31-4769DCF00731](https://user-images.githubusercontent.com/6045616/205520239-915339ab-7095-4017-b430-1917bc4842de.png)
 
 This web application parses a csv file with temperature and humidity information and generates last 24 hour and last 7 day charts.
 The format of the csv file is as follows:
