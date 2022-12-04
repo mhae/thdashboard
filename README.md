@@ -17,7 +17,7 @@ Example:
 ```
 
 ## Running (development)
-go run main.go -file=/tmp/crawlspace.csv
+go run . -file=/tmp/crawlspace.csv
 
 ## Cross compiling for Raspberry Pi
 env GOOS=linux GOARCH=arm GOARM=5 go build

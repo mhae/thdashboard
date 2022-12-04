@@ -30,7 +30,8 @@
 
         .current,
         .last24h,
-        .lastn {
+        .last30d,
+        .last7d {
             float: left;
             padding: 1px;
             min-height: 300px;
@@ -51,7 +52,11 @@
             width: 80%;
         }
 
-        .lastn {
+        .last7d {
+            width: 100%;
+        }
+
+        .last30d {
             width: 100%;
         }
 
@@ -106,8 +111,11 @@
                 <h2>Last 24h</h2>
             </div>
         </div>
-        <div id="lastn" class="lastn">
+        <div id="last7d" class="last7d">
             <h2>Last 7d</h2>
+        </div>
+        <div id="last30d" class="last30d">
+            <h2>Last 30d</h2>
         </div>
         <div class="footer">
         </div>
@@ -135,7 +143,7 @@
                         return value.replace(" ", "\n")
                     },
                 },
-                data: [{{ .GetLastDayTimestamp }}]
+                data: [{{ .GetLastDayTimestamps }}]
             },
             yAxis: { min: 10 },
             series: [
@@ -153,7 +161,7 @@
                             { type: 'average', name: 'Avg' }
                         ]
                     },
-                    data: [{{ .GetLastDayTemperature }}]
+                    data: [{{ .GetLastDayTemperatures }}]
                 },
                 {
                     name: 'Humidity',
@@ -169,15 +177,15 @@
                             { type: 'average', name: 'Avg' }
                         ]
                     },
-                    data: [{{ .GetLastDayHumidity }}]
+                    data: [{{ .GetLastDayHumidities }}]
                 }]
         };
         myChart1.setOption(option);
 
-        var myChart2 = echarts.init(document.getElementById('lastn'), 'dark');
+        var myChart2 = echarts.init(document.getElementById('last7d'), 'dark');
         var option = {
             title: {
-                text: 'Last {{ .LastN }} days'
+                text: 'Last 7 days'
             },
             legend: {},
             dataZoom: [{}],
@@ -194,7 +202,7 @@
                         return value.replace(" ", "\n")
                     },
                 },
-                data: [{{ .GetLastNTimestamp }}]
+                data: [{{ .GetLast7dTimestamps }}]
             },
             yAxis: { min: 10 },
             series: [
@@ -212,7 +220,7 @@
                             { type: 'average', name: 'Avg' }
                         ]
                     },
-                    data: [{{ .GetLastNTemperature }}]
+                    data: [{{ .GetLast7dTemperatures }}]
                 },
                 {
                     name: 'Humidity',
@@ -228,7 +236,7 @@
                             { type: 'average', name: 'Avg' }
                         ]
                     },
-                    data: [{{ .GetLastNHumidity }}]
+                    data: [{{ .GetLast7dHumidities }}]
                 },
                 {
                     name: 'Temperature Trend',
@@ -278,12 +286,73 @@
                 ]
                 
         };
-
         myChart2.setOption(option);
+
+        var myChart3 = echarts.init(document.getElementById('last30d'), 'dark');
+        var option = {
+            title: {
+                text: 'Last 30 days'
+            },
+            legend: {},
+            dataZoom: [{}],
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'cross'
+                },
+            },
+            xAxis: {
+                name: "Timestamp",
+                axisLabel: {
+                    formatter: function (value, index) {
+                        return value.replace(" ", "\n")
+                    },
+                },
+                data: [{{ .GetLast30dTimestamps }}]
+            },
+            yAxis: { min: 10 },
+            series: [
+                {
+                    name: 'Temperature',
+                    type: 'line',
+                    markPoint: {
+                        data: [
+                            { type: 'max', name: 'Max' },
+                            { type: 'min', name: 'Min' }
+                        ]
+                    },
+                    markLine: {
+                        data: [
+                            { type: 'average', name: 'Avg' }
+                        ]
+                    },
+                    data: [{{ .GetLast30dTemperatures }}]
+                },
+                {
+                    name: 'Humidity',
+                    type: 'line',
+                    markPoint: {
+                        data: [
+                            { type: 'max', name: 'Max' },
+                            { type: 'min', name: 'Min' }
+                        ]
+                    },
+                    markLine: {
+                        data: [
+                            { type: 'average', name: 'Avg' }
+                        ]
+                    },
+                    data: [{{ .GetLast30dHumidities }}]
+                },
+                ]
+                
+        };
+        myChart3.setOption(option);
 
         window.onresize = function () {
             myChart1.resize();
             myChart2.resize();
+            myChart3.resize();
         };
     </script>
 </body>

@@ -16,13 +16,13 @@ func NewAggValues() *AggValues {
 	return &AggValues{Min: math.MaxFloat32}
 }
 
-func Max(av *AggValues) (string, float32) {
-	return av.MaxTs, av.Max
-}
+// func Max(av *AggValues) (string, float32) {
+// 	return av.MaxTs, av.Max
+// }
 
-func Min(av *AggValues) (string, float32) {
-	return av.MinTs, av.Min
-}
+// func Min(av *AggValues) (string, float32) {
+// 	return av.MinTs, av.Min
+// }
 
 func (av *AggValues) Avg() float32 {
 	return av.sum / float32(av.count)
