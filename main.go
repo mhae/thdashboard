@@ -45,16 +45,16 @@ type Stats struct {
 	dailyHumidityMinMax    []util.MinMax
 	LastDay                *LastN
 	Last7Days              *LastN
-	Last30Days             *LastN
+	LastNMonths            *LastN
 }
 
-func NewStats() *Stats {
+func NewStats(lastNMonths uint) *Stats {
 	stats := &Stats{}
-	stats.LastN = 31 // max of how far to go back
+	stats.LastN = 31 * lastNMonths // max of how far to go back
 
 	stats.LastDay = NewLastN(time.Duration(24)*time.Hour, 1)
 	stats.Last7Days = NewLastN(time.Duration(7*24)*time.Hour, 1)
-	stats.Last30Days = NewLastN(time.Duration(30*24)*time.Hour, 3600)
+	stats.LastNMonths = NewLastN(time.Duration(lastNMonths*31*24)*time.Hour, 3600)
 
 	return stats
 }
@@ -97,16 +97,16 @@ func (stats *Stats) GetLast7dHumidities() template.JS {
 	return template.JS(strings.Join(stats.Last7Days.Humidities, ","))
 }
 
-func (stats *Stats) GetLast30dTimestamps() template.JS {
-	return template.JS(formatTimes(stats.Last30Days.Timestamps))
+func (stats *Stats) GetLastNMonthsTimestamps() template.JS {
+	return template.JS(formatTimes(stats.LastNMonths.Timestamps))
 }
 
-func (stats *Stats) GetLast30dTemperatures() template.JS {
-	return template.JS(strings.Join(stats.Last30Days.Temperatures, ","))
+func (stats *Stats) GetLastNMonthsTemperatures() template.JS {
+	return template.JS(strings.Join(stats.LastNMonths.Temperatures, ","))
 }
 
-func (stats *Stats) GetLast30dHumidities() template.JS {
-	return template.JS(strings.Join(stats.Last30Days.Humidities, ","))
+func (stats *Stats) GetLastNMonthsHumidities() template.JS {
+	return template.JS(strings.Join(stats.LastNMonths.Humidities, ","))
 }
 
 func (stats *Stats) GetLastDayTimestamps() template.JS {
@@ -257,7 +257,7 @@ func (s *Stats) process(scanner *util.Scanner) {
 
 		s.LastDay.Add(date, temp, hum)
 		s.Last7Days.Add(date, temp, hum)
-		s.Last30Days.Add(date, temp, hum)
+		s.LastNMonths.Add(date, temp, hum)
 
 		// Process daily min/max
 		s.dailyTemperatureMinMax[len(s.dailyTemperatureMinMax)-1].Update(float32(temp), date)
@@ -275,9 +275,9 @@ func (s *Stats) process(scanner *util.Scanner) {
 	util.ReverseSlice(s.Last7Days.Temperatures)
 	util.ReverseSlice(s.Last7Days.Humidities)
 
-	util.ReverseSlice(s.Last30Days.Timestamps)
-	util.ReverseSlice(s.Last30Days.Temperatures)
-	util.ReverseSlice(s.Last30Days.Humidities)
+	util.ReverseSlice(s.LastNMonths.Timestamps)
+	util.ReverseSlice(s.LastNMonths.Temperatures)
+	util.ReverseSlice(s.LastNMonths.Humidities)
 
 	s.LastNHumidityTrend.Calc()
 	s.LastNTemperatureTrend.Calc()
@@ -324,8 +324,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	fi, err := f.Stat()
 	check(err)
 
+	lastNMonths, err := strconv.ParseUint(r.FormValue("lastnm"), 10, 32)
+	if err != nil {
+		lastNMonths = 1
+	}
 	scanner := util.NewScanner(f, int(fi.Size()))
-	stats := NewStats()
+	stats := NewStats(uint(lastNMonths))
 	stats.process(scanner)
 
 	t := template.Must(template.New("view.html").Parse(dash_html))
