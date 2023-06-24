@@ -2,15 +2,21 @@
 <html lang="en">
 
 <script type="text/javascript">
-    window.onload = function() {
+    function getlastNMQp() {
         const url = new URL(location.href);
-        document.getElementById("lastnm").value = url.searchParams.get('lastnm');
+        var lastNmQp = url.searchParams.get('lastnm');
+        if (lastNmQp == null) lastNmQp = 1;
+        return lastNmQp;
     }
 
     function changeLastNMonths(dropdown) {
         const url = new URL(location.href);
         url.searchParams.set('lastnm', dropdown.options[dropdown.selectedIndex].value);
         location.assign(url.search);
+    }
+
+    window.onload = function() {
+        document.getElementById("lastnm").value = getlastNMQp();
     }
 </script>
     
@@ -316,10 +322,9 @@
         myChart2.setOption(option);
 
         var myChart3 = echarts.init(document.getElementById('lastNM'), 'dark');
-        const url = new URL(location.href);
         var option = {
             title: {
-                text: 'Last ' + url.searchParams.get('lastnm') + " month(s)"
+                text: 'Last ' + getlastNMQp() + " month(s)"
             },
             legend: {},
             dataZoom: [{}],
