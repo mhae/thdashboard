@@ -1,6 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 
+<script type="text/javascript">
+    window.onload = function() {
+        const url = new URL(location.href);
+        document.getElementById("lastnm").value = url.searchParams.get('lastnm');
+    }
+
+    function changeLastNMonths(dropdown) {
+        const url = new URL(location.href);
+        url.searchParams.set('lastnm', dropdown.options[dropdown.selectedIndex].value);
+        location.assign(url.search);
+    }
+</script>
+    
+
 <head>
     <meta charset="utf-8">
     <title>Temperature and Humidity Dashboard</title>
@@ -11,6 +25,13 @@
         }
 
         .header {
+            padding: 1px 5px;
+            background-color: rgb(16, 13, 41);
+            color: rgb(238, 241, 250);
+        }
+
+        .menu {
+            font: 14px Arial, sans-serif;
             padding: 1px 5px;
             background-color: rgb(16, 13, 41);
             color: rgb(238, 241, 250);
@@ -30,7 +51,7 @@
 
         .current,
         .last24h,
-        .last30d,
+        .lastNM,
         .last7d {
             float: left;
             padding: 1px;
@@ -56,7 +77,7 @@
             width: 100%;
         }
 
-        .last30d {
+        .lastNM {
             width: 100%;
         }
 
@@ -106,6 +127,12 @@
                         <td>{{ .CurrentHumidity }}</td>
                     </tr>
                 </table>
+                <label for="lastnm">Last N Months:</label>
+                <select class="menu" name="lastnm" id="lastnm" onchange="changeLastNMonths(this)">
+                    <option value="1">1 Month</option>
+                    <option value="6">6 Months</option>
+                    <option value="12">12 Months</option>
+                </select>
             </div>
             <div id="last24h" class="last24h">
                 <h2>Last 24h</h2>
@@ -114,8 +141,8 @@
         <div id="last7d" class="last7d">
             <h2>Last 7d</h2>
         </div>
-        <div id="last30d" class="last30d">
-            <h2>Last 30d</h2>
+        <div id="lastNM" class="lastNM">
+            <h2>Last N Months</h2>
         </div>
         <div class="footer">
         </div>
@@ -288,10 +315,11 @@
         };
         myChart2.setOption(option);
 
-        var myChart3 = echarts.init(document.getElementById('last30d'), 'dark');
+        var myChart3 = echarts.init(document.getElementById('lastNM'), 'dark');
+        const url = new URL(location.href);
         var option = {
             title: {
-                text: 'Last 30 days'
+                text: 'Last ' + url.searchParams.get('lastnm') + " month(s)"
             },
             legend: {},
             dataZoom: [{}],
@@ -308,7 +336,7 @@
                         return value.replace(" ", "\n")
                     },
                 },
-                data: [{{ .GetLast30dTimestamps }}]
+                data: [{{ .GetLastNMonthsTimestamps }}]
             },
             yAxis: { min: 10 },
             series: [
@@ -326,7 +354,7 @@
                             { type: 'average', name: 'Avg' }
                         ]
                     },
-                    data: [{{ .GetLast30dTemperatures }}]
+                    data: [{{ .GetLastNMonthsTemperatures }}]
                 },
                 {
                     name: 'Humidity',
@@ -342,7 +370,7 @@
                             { type: 'average', name: 'Avg' }
                         ]
                     },
-                    data: [{{ .GetLast30dHumidities }}]
+                    data: [{{ .GetLastNMonthsHumidities }}]
                 },
                 ]
                 
